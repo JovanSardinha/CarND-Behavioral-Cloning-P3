@@ -20,17 +20,19 @@ import keras.backend.tensorflow_backend as KTF
 
 SRC_PATH = './'
 DATA_PATH = '/udacity/data/CarND-Behavioral-Cloning-P3-data'
-RUNS = ['run11','run22','run23','run25','run30','run31','run32','run16','run1','run2','run3']
 BATCH_SIZE = 8
 TENSORBOARD_PATH = os.path.join(SRC_PATH, 'tensorboard')
 MODELS_PATH = os.path.join(SRC_PATH, 'models')
 IMG_SHAPE = (160, 320, 3)
-STEERING_CORRECTION = 0.2
-ADD_FLIPS = True
-ADD_SIDE_VIEWS = True
-KEEP_ZERO = False
-KEEP_ZERO_STEERING_ANGLE_THRESHOLD = 0.4
-NORMALIZE_BRIGHTNESS = False
+
+hyperparams = {}
+hyperparams['STEERING_CORRECTION'] = 0.2
+hyperparams['ADD_FLIPS'] = True
+hyperparams['ADD_SIDE_VIEWS'] = True
+hyperparams['KEEP_ZERO'] = False
+hyperparams['KEEP_ZERO_STEERING_ANGLE_THRESHOLD'] = 0.4
+hyperparams['NORMALIZE_BRIGHTNESS'] = False
+hyperparams['SEED_VAL'] = 13
 
 headers = ['center_img_path', 'left_img_path', 'right_img_path', 'steering_angle', 'throttle', 'brake', 'speed']
 lines = []
@@ -43,32 +45,23 @@ def normalize_brightness(img):
     # convert the YUV image back to RGB format
     return cv2.cvtColor(img_yuv, cv2.COLOR_YUV2RGB)
 
-for idx, run in enumerate(RUNS):
-    run_path = os.path.join(DATA_PATH, run)
-    driving_log_path = os.path.join(run_path, 'driving_log.csv')
 
-    runs = runs + RUNS[idx] + ","
-    with open(driving_log_path, 'r') as csvfile:
-        reader = csv.reader(csvfile)
-        for line in reader:
-            lines.append(line)
-
-if not KEEP_ZERO:
+if  hyperparams['KEEP_ZERO'] == True:
     temp = []
-    np.random.seed(999)
+    np.random.seed(SEED_VAL)
     # Skip 0 deg steering angle images
     for line in lines:
         if float(line[3].strip()) != 0.0:
             temp.append(line)
-        elif np.random.uniform() > KEEP_ZERO_STEERING_ANGLE_THRESHOLD:
+        elif np.random.uniform() > hyperparams['KEEP_ZERO_STEERING_ANGLE_THRESHOLD']:
             temp.append(line)
     lines = temp
 
 def generator(samples, batch_size=BATCH_SIZE):
     num_samples = len(samples)
-    while 1: # Loop forever so the generator never terminates
+    while True:
         shuffle(samples)
-        for offset in range(0, num_samples, batch_size):
+        for offset in range(num_samples, batch_size):
             batch_samples = samples[offset:offset+batch_size]
 
             images = []
@@ -79,19 +72,19 @@ def generator(samples, batch_size=BATCH_SIZE):
                 right_img_path = sample[2].strip()
 
                 steering_center = float(sample[3].strip())
-                steering_left = steering_center + STEERING_CORRECTION
-                steering_right = steering_center - STEERING_CORRECTION
+                steering_left = steering_center + hyperparams['STEERING_CORRECTION']
+                steering_right = steering_center - hyperparams['STEERING_CORRECTION']
 
                 center_img = cv2.cvtColor(cv2.imread(center_img_path), cv2.COLOR_BGR2RGB)
                 left_img = cv2.cvtColor(cv2.imread(left_img_path), cv2.COLOR_BGR2RGB)
                 right_img = cv2.cvtColor(cv2.imread(right_img_path), cv2.COLOR_BGR2RGB)
 
-                if NORMALIZE_BRIGHTNESS:
+                if hyperparams['NORMALIZE_BRIGHTNESS'] == True:
                     center_img = normalize_brightness(center_img)
                     left_img = normalize_brightness(left_img)
                     right_img = normalize_brightness(right_img)
 
-                if ADD_FLIPS:
+                if hyperparams['ADD_FLIPS'] == True:
                     center_img_flipped = np.fliplr(center_img)
                     left_img_flipped = np.fliplr(left_img)
                     right_img_flipped = np.fliplr(right_img)
@@ -103,15 +96,14 @@ def generator(samples, batch_size=BATCH_SIZE):
                 images.append(center_img)
                 steering_angles.append(steering_center)
 
-                if ADD_SIDE_VIEWS:
+                if hyperparams['ADD_SIDE_VIEWS'] == True:
                     images.extend([left_img, right_img])
                     steering_angles.extend([steering_left, steering_right])
 
-                if ADD_FLIPS:
+                if hyperparams['ADD_FLIPS'] == True:
                     images.extend([center_img_flipped, left_img_flipped, right_img_flipped])
                     steering_angles.extend([steering_center_flipped, steering_left_flipped, steering_right_flipped])
 
-            # trim image to only see section with road
             X_train = np.array(images)
             y_train = np.array(steering_angles)
             yield shuffle(X_train, y_train)
@@ -138,11 +130,13 @@ def NVIDIA_model(input_shape):
     model = Model(inputs=inputs, outputs=output)
     return model
 
-# Split data in to training and validaiton sets
-train_samples, validation_samples = train_test_split(lines, test_size=0.2, random_state=42)
 
-print('Train_samples.shape', len(train_samples))
-print('Validation_samples.shape', len(validation_samples))
+train_samples, validation_samples = train_test_split(lines, test_size=0.2, random_state=hyperparams['SEED_VAL'])
+
+print('Train_samples Shape', len(train_samples))
+print('Validation_samples Shape', len(validation_samples))
+
+
 
 # Training new model
 ts = str(int(time.time()))
@@ -155,14 +149,14 @@ run_name = 'model={}-batch_size={}-num_epoch={}-steps_per_epoch={}-run-{}-ts={}'
                                                                           steps_per_epoch,
                                                                           runs,
                                                                           ts)
-print(run_name)
+print('run name:', run_name)
 tensorboard_loc = os.path.join(TENSORBOARD_PATH, run_name)
 checkpoint_loc = os.path.join(MODELS_PATH, 'model-{}.h5'.format(ts))
 
 earlyStopping = EarlyStopping(monitor='val_loss',
                               patience=3,
                               verbose=1,
-                              min_delta = 0.0001,
+                              min_delta = 1e-4,
                               mode='min')
 
 modelCheckpoint = ModelCheckpoint(checkpoint_loc,
@@ -178,8 +172,7 @@ train_generator = generator(train_samples)
 validation_generator = generator(validation_samples)
 
 model = NVIDIA_model(IMG_SHAPE)
-#model = load_model(os.path.join(MODELS_PATH, 'model-1511478745.h5'))
-optim = Adam(lr=0.0001)
+optim = Adam(lr=1e-4)
 model.compile(loss='mse', optimizer=optim)
 print(model.summary())
 
@@ -191,5 +184,4 @@ model.fit_generator(train_generator,
                     callbacks=callbacks_list,
                     epochs=num_epochs)
 
-#model.save(checkpoint_loc)
-print('Done training {}'.format(run_name))
+print('Model traning complete: {}'.format(run_name))
