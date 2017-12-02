@@ -190,8 +190,7 @@ if __name__ == '__main__':
                                       mode = 'min',
                                       verbose = 1)
 
-    tensorboard = TensorBoard(log_dir=tensorboard_loc, histogram_freq=0, write_graph=True, write_images=True)
-    callbacks_list = [modelCheckpoint, earlyStopping, tensorboard]
+    callbacks_list = [modelCheckpoint, earlyStopping]
 
     train_generator = generator(train_samples)
     validation_generator = generator(validation_samples)
