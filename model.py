@@ -1,3 +1,4 @@
+# imports
 import os
 import csv
 import time
@@ -18,13 +19,17 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from keras.losses import binary_crossentropy
 import keras.backend.tensorflow_backend as KTF
 
+
+# constants
 SRC_PATH = './'
 DATA_PATH = '/udacity/data/CarND-Behavioral-Cloning-P3-data'
 BATCH_SIZE = 8
 TENSORBOARD_PATH = os.path.join(SRC_PATH, 'tensorboard')
 MODELS_PATH = os.path.join(SRC_PATH, 'models')
 IMG_SHAPE = (160, 320, 3)
+RUNS = ['run1','run2','run3']
 
+# dict for hyperparams
 hyperparams = {}
 hyperparams['STEERING_CORRECTION'] = 0.2
 hyperparams['ADD_FLIPS'] = True
@@ -38,22 +43,18 @@ headers = ['center_img_path', 'left_img_path', 'right_img_path', 'steering_angle
 lines = []
 runs = ""
 
+
+# helper function that normalizes the brightness of images.
+# This can be used as a data augmentation step
 def normalize_brightness(img):
     img_yuv = cv2.cvtColor(img, cv2.COLOR_RGB2YUV)
     img_yuv[:,:,0] = cv2.equalizeHist(img_yuv[:,:,0])
     return cv2.cvtColor(img_yuv, cv2.COLOR_YUV2RGB)
 
 
-if  hyperparams['KEEP_0'] == True:
-    temp = []
-    np.random.seed(SEED_VAL)
-    for line in lines:
-        if float(line[3].strip()) != 0.0:
-            temp.append(line)
-        elif np.random.uniform() > hyperparams['KEEP_0_ANGLE_THRESHOLD']:
-            temp.append(line)
-    lines = temp
-
+# A generator that generates a batch of samples for traning.
+# This generator is deigned to warp wround the total traning set
+# and produce infinite samples if requested.
 def generator(samples, batch_size=BATCH_SIZE):
     num_samples = len(samples)
     while True:
@@ -105,7 +106,7 @@ def generator(samples, batch_size=BATCH_SIZE):
             y_train = np.array(steering_angles)
             yield shuffle(X_train, y_train)
 
-
+# NVIDIA model architecture definition
 def NVIDIA_model(input_shape):
     inputs = Input(shape=input_shape)
 
@@ -128,17 +129,44 @@ def NVIDIA_model(input_shape):
     return model
 
 
-train_samples, validation_samples = train_test_split(lines, test_size=0.2, random_state=hyperparams['SEED_VAL'])
-
-print('Train_samples Shape', len(train_samples))
-print('Validation_samples Shape', len(validation_samples))
-
 
 if __name__ == '__main__':
+
+    if  hyperparams['KEEP_0'] == True:
+        temp = []
+        np.random.seed(SEED_VAL)
+        for line in lines:
+            if float(line[3].strip()) != 0.0:
+                temp.append(line)
+            elif np.random.uniform() > hyperparams['KEEP_0_ANGLE_THRESHOLD']:
+                temp.append(line)
+        lines = temp
+
+
+    for idx, run in enumerate(RUNS):
+        run_path = os.path.join(DATA_PATH, run)
+        driving_log_path = os.path.join(run_path, 'driving_log.csv')
+
+    runs = runs + RUNS[idx] + ","
+    with open(driving_log_path, 'r') as csvfile:
+        reader = csv.reader(csvfile)
+        for line in reader:
+            lines.append(line)
+
+
+
     # Training new model
     ts = str(int(time.time()))
     model_name = 'nvidia'
     num_epochs = 50
+
+
+    train_samples, validation_samples = train_test_split(lines, test_size=0.2, random_state=hyperparams['SEED_VAL'])
+
+    print('Train_samples Shape', len(train_samples))
+    print('Validation_samples Shape', len(validation_samples))
+
+
     steps_per_epoch = int(len(train_samples)/BATCH_SIZE)
     run_name = 'model={}-batch_size={}-num_epoch={}-steps_per_epoch={}-run-{}-ts={}'.format(model_name,
                                                                               BATCH_SIZE,
