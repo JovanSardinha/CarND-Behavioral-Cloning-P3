@@ -15,7 +15,7 @@ from keras.regularizers import l2
 from keras.models import Model, load_model
 from keras.layers import *
 from keras.optimizers import *
-from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.losses import binary_crossentropy
 import keras.backend.tensorflow_backend as KTF
 
@@ -24,7 +24,6 @@ import keras.backend.tensorflow_backend as KTF
 SRC_PATH = './'
 DATA_PATH = '/udacity/data/CarND-Behavioral-Cloning-P3-data'
 BATCH_SIZE = 8
-TENSORBOARD_PATH = os.path.join(SRC_PATH, 'tensorboard')
 MODELS_PATH = os.path.join(SRC_PATH, 'models')
 IMG_SHAPE = (160, 320, 3)
 RUNS = ['run1','run2','run3']
@@ -175,7 +174,6 @@ if __name__ == '__main__':
                                                                               runs,
                                                                               ts)
     print('run name:', run_name)
-    tensorboard_loc = os.path.join(TENSORBOARD_PATH, run_name)
     checkpoint_loc = os.path.join(MODELS_PATH, 'model-{}.h5'.format(ts))
 
     earlyStopping = EarlyStopping(monitor='val_loss',
