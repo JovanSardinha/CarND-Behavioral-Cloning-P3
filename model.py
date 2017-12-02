@@ -118,7 +118,7 @@ def NVIDIA_model(input_shape):
     l_1 = Conv2D(64, (3, 3), activation='relu', name='conv5')(l_1)
 
     l_2 = Flatten(name='flatten')(l_1)
-    l_2 = Dropout(0.5)(x)
+    l_2 = Dropout(0.5)(l_2)
     l_2 = Dense(100, activation='relu', name='fc1')(l_2)
     l_2 = Dense(50, activation='relu', name='fc2')(l_2)
     l_2 = Dense(10, activation='relu', name='fc3')(l_2)
