@@ -1,3 +1,4 @@
 .car-nd
 *.mp4
 autonomous_run*
+.DS_Store
