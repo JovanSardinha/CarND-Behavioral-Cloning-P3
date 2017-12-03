@@ -105,8 +105,8 @@ def generator(samples, batch_size=BATCH_SIZE):
             y_train = np.array(steering_angles)
             yield shuffle(X_train, y_train)
 
-# NVIDIA model architecture definition
-def NVIDIA_model(input_shape):
+# Behavioral cloning model architecture definition
+def behavioral_cloning_model(input_shape):
     inputs = Input(shape=input_shape)
 
     l_0 = Lambda(lambda img: (img / 255.0) - 0.5)(inputs)
@@ -156,7 +156,7 @@ if __name__ == '__main__':
 
     # Training new model
     ts = str(int(time.time()))
-    model_name = 'nvidia'
+    model_name = 'behavioral_cloning'
     num_epochs = 50
 
 
@@ -193,7 +193,7 @@ if __name__ == '__main__':
     train_generator = generator(train_samples)
     validation_generator = generator(validation_samples)
 
-    model = NVIDIA_model(IMG_SHAPE)
+    model = behavioral_cloning_model(IMG_SHAPE)
     optim = Adam(lr=1e-4)
     model.compile(loss='mse', optimizer=optim)
     print(model.summary())
